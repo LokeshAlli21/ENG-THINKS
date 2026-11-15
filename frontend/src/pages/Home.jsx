@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { COMPANY, heading, body } from "../components/Navbar";
+import Section2 from "../components/Setion2";
 
 /* -------------------------------------------------------------------------
    ENG THINKS — Home page (Hero section)
@@ -293,13 +294,7 @@ export default function Home() {
 
       <main>
         <Hero />
-        <div className="bg-white min-h-[100vh]">
-          <div className="container mx-auto px-4 py-12">
-            <h2 className="text-2xl font-bold">Section 2</h2>
-            <p>Content for section 2</p>
-            <h4>Im thinking to place a sliding image gallery or video here which have white background</h4>
-          </div>
-        </div>
+        <Section2 />
       </main>
     </>
   );

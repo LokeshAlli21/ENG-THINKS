@@ -7,28 +7,81 @@ const IMG = '/media'
 const VID = '/media'
 
 /* ------------------------------------------------------------------
-   MEDIA LIST: reorder, add or remove items here.
+   MEDIA LIST: add or remove items here. Order does not matter,
+   the slideshow is shuffled on every page load.
    - type: 'image' or 'video'
    - src: file path (case-sensitive, must match the real filename)
    - poster: optional preview image for a video
    - title / caption: optional text shown with the slide
 ------------------------------------------------------------------- */
 const MEDIA_ITEMS = [
-  // { type: 'video', src: `${VID}/Beam.mp4`, title: 'Beam Design', caption: 'Accurate beam design and detailing.' },
+  { type: 'video', src: `${VID}/Beam.mp4`, title: 'Beam Design', caption: 'Accurate beam design and detailing.' },
   { type: 'image', src: `${IMG}/SLAB_1.png`, title: 'Slab Detailing', caption: 'Precise slab layouts for faster construction.' },
   { type: 'image', src: `${IMG}/SLAB_2.png`, title: 'Slab Detailing', caption: 'Clear drawings that reduce site errors.' },
-  // { type: 'video', src: `${VID}/SLAB.mp4`, title: 'Slab Walkthrough', caption: 'From design to detailing.' },
+  { type: 'video', src: `${VID}/SLAB.mp4`, title: 'Slab Walkthrough', caption: 'From design to detailing.' },
   { type: 'image', src: `${IMG}/SLAB_3.png`, title: 'Slab Detailing', caption: 'Practical solutions for modern construction.' },
   { type: 'image', src: `${IMG}/SLAB_4.png`, title: 'Slab Detailing', caption: 'Built for speed, safety and efficiency.' },
-  // { type: 'video', src: `${VID}/STAIRCASE.mp4`, title: 'Staircase Design', caption: 'Structural staircase solutions.' },
+  { type: 'video', src: `${VID}/STAIRCASE.mp4`, title: 'Staircase Design', caption: 'Structural staircase solutions.' },
   { type: 'image', src: `${IMG}/STAIRCASE_1.png`, title: 'Staircase Detailing', caption: 'Accurate staircase design and reinforcement.' },
   { type: 'image', src: `${IMG}/STAIRCASE_2.png`, title: 'Staircase Detailing', caption: 'Practical engineering that moves projects forward.' },
 ]
 
 const IMAGE_DURATION = 2000 // ms each image stays on screen
 const SWIPE_THRESHOLD = 50 // px
-const ERROR_SKIP_DELAY = 2000 // ms before skipping a video that failed to load
+const ERROR_SKIP_DELAY = 2000 // ms before skipping a video that failed to play
 const SLIDE_MS = 800 // laptop slide transition length
+const INITIAL_PARALLEL = 2 // downloads at once until the first item is ready (so it arrives fast)
+const PARALLEL = 3 // downloads at once after that
+
+/* ------------------------------------------------------------------
+   LOADING ALGORITHM
+   1. Shuffle the list once (Fisher-Yates).
+   2. Download in that order with a small parallel pool, so the first
+      items get the full bandwidth instead of all competing at once.
+   3. An item joins the playlist only when it is fully usable:
+      images are downloaded AND decoded, videos can start playing.
+   4. The slideshow plays whatever is ready and loops over it, new
+      items are appended as they arrive. The user never sees a blank slide.
+------------------------------------------------------------------- */
+const shuffle = (list) => {
+  const a = [...list]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+const loadItem = (item, isFirst, keep) =>
+  new Promise((resolve) => {
+    if (item.type === 'video') {
+      const v = document.createElement('video')
+      v.muted = true
+      v.playsInline = true
+      v.preload = 'auto'
+      v.addEventListener('canplay', () => resolve(true), { once: true })
+      v.addEventListener('error', () => resolve(false), { once: true })
+      v.src = item.src
+      v.load()
+      keep.push(v)
+      if (item.poster) {
+        const p = new Image()
+        p.src = item.poster
+        keep.push(p)
+      }
+    } else {
+      const img = new Image()
+      img.decoding = 'async'
+      if (isFirst && 'fetchPriority' in img) img.fetchPriority = 'high'
+      img.onload = () => {
+        const decoded = img.decode ? img.decode().catch(() => {}) : Promise.resolve()
+        decoded.then(() => resolve(true))
+      }
+      img.onerror = () => resolve(false)
+      img.src = item.src
+      keep.push(img)
+    }
+  })
 
 /* Laptop (1024px and up): new slide enters from the right, old one exits left.
    Going back reverses it. Small screens use a soft fade instead. */
@@ -64,25 +117,76 @@ const Chevron = ({ dir }) => (
 )
 
 function Section2() {
-  const total = MEDIA_ITEMS.length
+  // playlist = items that are fully loaded, in the order they became ready
+  const [playlist, setPlaylist] = useState([])
+  const [loadingDone, setLoadingDone] = useState(false)
   // index = current slide, prev = slide sliding out, dir = 1 (forward) or -1 (back)
   const [state, setState] = useState({ index: 0, prev: null, dir: 1 })
   const [inView, setInView] = useState(true)
   const [failed, setFailed] = useState({})
 
+  const total = playlist.length
   const { index, prev: prevIndex, dir } = state
 
   const sectionRef = useRef(null)
-  const videoRefs = useRef([])
+  const videoRefs = useRef({})
   const touchStartX = useRef(null)
 
-  const active = MEDIA_ITEMS[index]
+  const active = playlist[index]
   const activeFailed = active?.type === 'video' && failed[active.src]
+
+  // Shuffle + prioritized loading
+  useEffect(() => {
+    let cancelled = false
+    const order = shuffle(MEDIA_ITEMS)
+    const keep = [] // keeps detached elements alive while they download
+    let cursor = 0
+    let running = 0
+    let finished = 0
+    let okCount = 0
+
+    setPlaylist([])
+    setLoadingDone(false)
+
+    const pump = () => {
+      if (cancelled) return
+      const limit = okCount === 0 ? INITIAL_PARALLEL : PARALLEL
+      while (running < limit && cursor < order.length) {
+        const item = order[cursor]
+        const isFirst = cursor === 0
+        cursor++
+        running++
+        loadItem(item, isFirst, keep).then((ok) => {
+          if (cancelled) return
+          running--
+          finished++
+          if (ok) {
+            okCount++
+            setPlaylist((list) => (list.some((x) => x.src === item.src) ? list : [...list, item]))
+          }
+          if (finished === order.length) setLoadingDone(true)
+          pump()
+        })
+      }
+    }
+    pump()
+
+    return () => {
+      cancelled = true
+      keep.forEach((el) => {
+        if (el instanceof HTMLVideoElement) {
+          el.removeAttribute('src')
+          el.load()
+        }
+      })
+    }
+  }, [])
 
   const goTo = useCallback(
     (target, direction) =>
       setState((s) => {
-        const i = (target + total) % total
+        if (total < 2) return s
+        const i = ((target % total) + total) % total
         if (i === s.index) return s
         return { index: i, prev: s.index, dir: direction ?? (i > s.index ? 1 : -1) }
       }),
@@ -103,7 +207,7 @@ function Section2() {
     return () => observer.disconnect()
   }, [])
 
-  // Images advance on a timer
+  // Images advance on a timer (starts as soon as a second item is ready)
   useEffect(() => {
     if (!active || active.type !== 'image' || !inView || total < 2) return
     const t = setTimeout(next, IMAGE_DURATION)
@@ -112,18 +216,20 @@ function Section2() {
 
   // Only the active video plays
   useEffect(() => {
-    videoRefs.current.forEach((video, i) => {
+    playlist.forEach((item, i) => {
+      if (item.type !== 'video') return
+      const video = videoRefs.current[item.src]
       if (!video) return
-      if (i === index && inView && !failed[MEDIA_ITEMS[i].src]) {
+      if (i === index && inView && !failed[item.src]) {
         video.play().catch(() => {})
       } else {
         video.pause()
         if (i !== index && i !== prevIndex) video.currentTime = 0
       }
     })
-  }, [index, prevIndex, inView, failed])
+  }, [playlist, index, prevIndex, inView, failed])
 
-  // Skip a video that failed to load
+  // Skip a video that failed to play
   useEffect(() => {
     if (!activeFailed || total < 2) return
     const t = setTimeout(next, ERROR_SKIP_DELAY)
@@ -143,8 +249,6 @@ function Section2() {
     if (Math.abs(diff) > SWIPE_THRESHOLD) diff < 0 ? next() : prev()
     touchStartX.current = null
   }
-
-  if (total === 0) return null
 
   // Laptop slide animation classes (no effect below 1024px)
   const slideClass = (i) => {
@@ -169,6 +273,7 @@ function Section2() {
       role="region"
       aria-roledescription="carousel"
       aria-label="Project media gallery"
+      aria-busy={total === 0 && !loadingDone}
     >
       <style>{SLIDE_CSS}</style>
 
@@ -186,7 +291,7 @@ function Section2() {
         {/* Slider */}
         <div className="relative overflow-hidden rounded-2xl bg-gray-50 ring-1 ring-gray-200 lg:h-full lg:rounded-none lg:bg-neutral-950 lg:ring-0">
           <div className="relative aspect-video w-full lg:aspect-auto lg:h-full">
-            {MEDIA_ITEMS.map((item, i) => (
+            {playlist.map((item, i) => (
               <div
                 key={item.src}
                 className={`absolute inset-0 will-change-transform transition-opacity duration-500 ease-in-out ${slideClass(i)} ${
@@ -197,18 +302,22 @@ function Section2() {
                 {item.type === 'video' ? (
                   <video
                     ref={(el) => {
-                      videoRefs.current[i] = el
-                      if (el) el.muted = true
+                      if (el) {
+                        videoRefs.current[item.src] = el
+                        el.muted = true
+                      } else {
+                        delete videoRefs.current[item.src]
+                      }
                     }}
                     src={item.src}
                     poster={item.poster}
                     className="w-full h-full object-contain lg:object-cover"
                     muted
                     playsInline
-                    preload={i === index || i === (index + 1) % total ? 'auto' : 'none'}
+                    preload="auto"
                     loop={total === 1}
                     onError={() => {
-                      console.error(`Video failed to load: ${item.src}`)
+                      console.error(`Video failed to play: ${item.src}`)
                       setFailed((f) => ({ ...f, [item.src]: true }))
                     }}
                     onEnded={() => total > 1 && next()}
@@ -218,12 +327,29 @@ function Section2() {
                     src={item.src}
                     alt={item.title || `Slide ${i + 1}`}
                     className="w-full h-full object-contain lg:object-cover"
-                    loading={i === 0 ? 'eager' : 'lazy'}
+                    decoding="async"
                     draggable={false}
                   />
                 )}
               </div>
             ))}
+
+            {/* Loading state: shown only until the first item is ready */}
+            {total === 0 && (
+              <div className="absolute inset-0 z-10 grid place-items-center">
+                {loadingDone ? (
+                  <p className="px-6 text-center text-sm sm:text-base text-gray-500 lg:text-white/70">
+                    The gallery could not be loaded. Please refresh the page.
+                  </p>
+                ) : (
+                  <div
+                    className="w-10 h-10 rounded-full border-4 border-gray-300 border-t-gray-700 lg:border-white/25 lg:border-t-white animate-spin"
+                    role="status"
+                    aria-label="Loading gallery"
+                  />
+                )}
+              </div>
+            )}
 
             {/* Laptop: readability gradients */}
             <div className="hidden lg:block pointer-events-none absolute inset-x-0 top-0 z-20 h-44 bg-gradient-to-b from-black/60 to-transparent" />
@@ -260,15 +386,15 @@ function Section2() {
             {/* Laptop: caption, dots and arrows */}
             <div className="hidden lg:flex absolute bottom-0 inset-x-0 z-30 items-end justify-between gap-6 px-16 pb-12">
               <div className="min-w-0">
-                {active.title && (
+                {active?.title && (
                   <h3 className="text-5xl font-semibold tracking-tight">{active.title}</h3>
                 )}
-                {active.caption && (
+                {active?.caption && (
                   <p className="mt-2 max-w-xl text-lg text-white/80">{active.caption}</p>
                 )}
                 {total > 1 && (
                   <div className="mt-5 flex gap-2">
-                    {MEDIA_ITEMS.map((item, i) => (
+                    {playlist.map((item, i) => (
                       <button
                         key={item.src}
                         onClick={() => goTo(i)}
@@ -298,7 +424,7 @@ function Section2() {
 
         {/* Small screens: caption + dots below the slide */}
         <div className="lg:hidden">
-          {(active.title || active.caption) && (
+          {(active?.title || active?.caption) && (
             <div className="mt-6 text-center min-h-[4rem]" aria-live="polite">
               {active.title && (
                 <h3 className="text-lg sm:text-xl font-semibold text-gray-900">{active.title}</h3>
@@ -310,7 +436,7 @@ function Section2() {
           )}
           {total > 1 && (
             <div className="mt-2 flex justify-center gap-2">
-              {MEDIA_ITEMS.map((item, i) => (
+              {playlist.map((item, i) => (
                 <button
                   key={item.src}
                   onClick={() => goTo(i)}

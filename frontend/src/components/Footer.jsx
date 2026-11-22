@@ -100,7 +100,7 @@ export default function Footer({
             <h3 className="mb-4 font-semibold text-white">Quick links</h3>
             <ul className="space-y-2.5 text-sm">
               {navs.map((n) => (
-                <li key={n.path}>
+                <li key={`${n.path}-${n.section ?? n.label}`}>
                   <Link
                     to={n.path}
                     onClick={() => {
@@ -139,39 +139,39 @@ export default function Footer({
             </ul>
           </div> */}
           <div className="lg:col-span-4">
-  <h3 className="mb-4 font-semibold text-white">
-    <Link
-      to="/services"
-      onClick={scrollTop}
-      className={`transition-colors hover:text-orange-400 ${focusRing}`}
-    >
-      Services
-    </Link>
-  </h3>
-  <ul className="space-y-2.5 text-sm">
-    {SERVICES.map((s) => (
-      <li key={s.label}>
-        <Link
-          to={s.path}
-          onClick={() => {
-            if (s.section) {
-              setTimeout(() => {
-                document.getElementById(s.section)?.scrollIntoView({
-                  behavior: "smooth",
-                });
-              }, 100);
-            } else {
-              scrollTop();
-            }
-          }}
-          className={`transition-colors hover:text-orange-400 ${focusRing}`}
-        >
-          {s.label}
-        </Link>
-      </li>
-    ))}
-  </ul>
-</div>
+            <h3 className="mb-4 font-semibold text-white">
+              <Link
+                to="/services"
+                onClick={scrollTop}
+                className={`transition-colors hover:text-orange-400 ${focusRing}`}
+              >
+                Services
+              </Link>
+            </h3>
+            <ul className="space-y-2.5 text-sm">
+              {SERVICES.map((s) => (
+                <li key={s.label}>
+                  <Link
+                    to={s.path}
+                    onClick={() => {
+                      if (s.section) {
+                        setTimeout(() => {
+                          document.getElementById(s.section)?.scrollIntoView({
+                            behavior: "smooth",
+                          });
+                        }, 100);
+                      } else {
+                        scrollTop();
+                      }
+                    }}
+                    className={`transition-colors hover:text-orange-400 ${focusRing}`}
+                  >
+                    {s.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
 
         </div>
 

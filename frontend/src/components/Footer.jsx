@@ -18,11 +18,15 @@ const DEFAULT_NAVS = [
 ];
 
 const SERVICES = [
-  // "Structural Design",
-  // "Precast Detailing",
-  // "Reinforcement Detailing",
-  // "Shop & Erection Drawings",
-  // "BOQ & Quantity Estimation",
+  { label: "Structural Design", path: "/services", section: "design" },
+  { label: "Structural Analysis", path: "/services", section: "design" },
+  { label: "Precast Detailing", path: "/services", section: "drawings" },
+  { label: "Reinforcement Detailing", path: "/services", section: "drawings" },
+  { label: "Shop & Erection Drawings", path: "/services", section: "drawings" },
+  { label: "Production Drawings", path: "/services", section: "drawings" },
+  { label: "BOQ & Quantity Estimation", path: "/services", section: "estimation" },
+  { label: "Engineering Consultation", path: "/services", section: "design" },
+  { label: "Custom Precast Engineering", path: "/services", section: "design" },
 ];
 
 const PHONE_DISPLAY = "+91 XXXXXXXXXX";  // +91 77985 67781
@@ -120,14 +124,55 @@ export default function Footer({
           </nav>
 
           {/* Services */}
-          <div className="lg:col-span-4">
-            <h3 className="mb-4 font-semibold text-white">Services</h3>
+          {/* <div className="lg:col-span-4">
+            <Link to="/services" className="transition hover:text-orange-400">
+                    <h3 className="mb-4 font-semibold text-white">Services</h3>
+            </Link>
             <ul className="space-y-2.5 text-sm">
               {SERVICES.map((s) => (
-                <li key={s}>{s}</li>
+                <li key={s}>
+                  <Link to="/services" className="transition hover:text-orange-400">
+                    {s}
+                  </Link>
+                </li>
               ))}
             </ul>
-          </div>
+          </div> */}
+          <div className="lg:col-span-4">
+  <h3 className="mb-4 font-semibold text-white">
+    <Link
+      to="/services"
+      onClick={scrollTop}
+      className={`transition-colors hover:text-orange-400 ${focusRing}`}
+    >
+      Services
+    </Link>
+  </h3>
+  <ul className="space-y-2.5 text-sm">
+    {SERVICES.map((s) => (
+      <li key={s.label}>
+        <Link
+          to={s.path}
+          onClick={() => {
+            if (s.section) {
+              setTimeout(() => {
+                document.getElementById(s.section)?.scrollIntoView({
+                  behavior: "smooth",
+                });
+              }, 100);
+            } else {
+              scrollTop();
+            }
+          }}
+          className={`transition-colors hover:text-orange-400 ${focusRing}`}
+        >
+          {s.label}
+        </Link>
+      </li>
+    ))}
+  </ul>
+</div>
+
         </div>
 
         <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs text-slate-400 sm:flex-row">

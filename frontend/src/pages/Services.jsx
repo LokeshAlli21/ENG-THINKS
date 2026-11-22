@@ -237,7 +237,7 @@ const Services = () => {
               Get Consultation
             </Link>
             <Link
-              to="/about"
+              to="/aboutus"
               className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-full border border-white/30 px-7 py-3 font-semibold text-white transition hover:bg-white/10"
             >
               About ENG THINKS <ArrowIcon />

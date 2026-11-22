@@ -187,10 +187,10 @@ function Hero() {
       <div className="mx-auto grid w-full max-w-7xl items-center lg:max-w-6xl gap-14 px-5 sm:px-8 lg:grid-cols-[1.05fr_1fr] lg:gap-10 xl:gap-16">
         {/* Left */}
         <div className="ss-rise max-w-2xl">
-          <p className={`${body} mb-6 inline-flex items-center gap-2.5 lg:mb-4 rounded-full border border-white/15 bg-white/[0.06] py-1.5 pl-2.5 pr-4 text-[11px] font-semibold tracking-[0.14em] text-white/80 backdrop-blur sm:text-xs lg:text-[11px]`}>
+          {/* <p className={`${body} mb-6 inline-flex items-center gap-2.5 lg:mb-4 rounded-full border border-white/15 bg-white/[0.06] py-1.5 pl-2.5 pr-4 text-[11px] font-semibold tracking-[0.14em] text-white/80 backdrop-blur sm:text-xs lg:text-[11px]`}>
             <span className="h-2 w-2 rounded-full bg-[var(--accent)]" aria-hidden="true" />
             PRECISION ENGINEERING FOR MODERN CONSTRUCTION
-          </p>
+          </p> */}
 
           <h1
             id="hero-heading"

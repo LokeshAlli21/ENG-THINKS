@@ -44,6 +44,16 @@ const icons = {
       <path d="M26 8L32 14M26 16L32 22M26 24L32 30M38 8L44 14M38 16L44 22" strokeDasharray="2 3" />
     </Icon>
   ),
+  wallPanel: (
+    <Icon>
+      <path d="M2 36H62" />
+      <rect x="16" y="4" width="32" height="32" />
+      <path d="M16 12H48M16 28H48" strokeDasharray="3 3" />
+      <circle cx="24" cy="8" r="1.5" />
+      <circle cx="40" cy="8" r="1.5" />
+      <path d="M26 20H38" />
+    </Icon>
+  ),
   column: (
     <Icon>
       <path d="M2 36H62" />
@@ -130,6 +140,7 @@ const groups = [
   {
     title: "Structural elements",
     items: [
+      { name: "Wall panels", icon: icons.wallPanel },
       { name: "Columns", icon: icons.column },
       { name: "Beams", icon: icons.beam },
       { name: "Slabs", icon: icons.slab },

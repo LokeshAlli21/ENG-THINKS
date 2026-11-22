@@ -53,15 +53,45 @@ function Icon({ name, className = "h-5 w-5" }) {
   );
 }
 
+/* --------------------- Hero visual: precast frame assembly ---------------- */
 
-/* --------------------- Hero visual: precast frame drawing ---------------- */
+/* Wraps a building element so it "flies" into place from (dx, dy). */
+function Part({ dx = 0, dy = -100, delay = 0, children }) {
+  return (
+    <g
+      className="ss-asm"
+      style={{ "--dx": `${dx}px`, "--dy": `${dy}px`, animationDelay: `${delay}s` }}
+    >
+      {children}
+    </g>
+  );
+}
 
 function PrecastDrawing() {
+  const solid = {
+    fill: "#122C4B",
+    stroke: "var(--d)",
+    strokeWidth: 1.75,
+    strokeLinejoin: "round",
+  };
+  const voids = [120, 168, 216, 264, 312, 360, 408, 456];
+
+  const Slab = ({ y, cy }) => (
+    <>
+      <rect x="96" y={y} width="408" height="36" {...solid} />
+      <g fill="none" stroke="var(--d)" strokeOpacity="0.5" strokeWidth="1.25">
+        {voids.map((cx) => (
+          <ellipse key={cx} cx={cx + 12} cy={cy} rx="15" ry="10" />
+        ))}
+      </g>
+    </>
+  );
+
   return (
     <svg
       viewBox="0 0 600 560"
       role="img"
-      aria-label="Technical drawing of a precast concrete frame with beams, columns, hollow-core slabs and a reinforcement section detail"
+      aria-label="Technical drawing of a precast concrete frame being assembled from footings, columns, beams and hollow-core slabs, with a reinforcement section detail"
       className="h-auto w-full lg:h-full"
     >
       <defs>
@@ -86,54 +116,48 @@ function PrecastDrawing() {
       <line x1="40" y1="490" x2="560" y2="490" stroke="var(--d)" strokeWidth="1.5" />
       <path d="M40 490l-12 12M80 490l-12 12M120 490l-12 12M160 490l-12 12M200 490l-12 12M240 490l-12 12M280 490l-12 12M320 490l-12 12M360 490l-12 12M400 490l-12 12M440 490l-12 12M480 490l-12 12M520 490l-12 12M560 490l-12 12" stroke="var(--d)" strokeOpacity="0.3" />
 
-      {/* Frame (lines draw in once) */}
-      <g fill="rgba(169,198,238,0.07)" stroke="var(--d)" strokeWidth="1.75" strokeLinejoin="round">
-        <rect className="ss-draw" pathLength="1" x="128" y="470" width="86" height="20" />
-        <rect className="ss-draw" pathLength="1" x="386" y="470" width="86" height="20" />
-        <rect className="ss-draw" pathLength="1" x="152" y="200" width="38" height="270" />
-        <rect className="ss-draw" pathLength="1" x="410" y="200" width="38" height="270" />
-        <rect className="ss-draw" pathLength="1" x="112" y="328" width="376" height="48" />
-        <rect className="ss-draw" pathLength="1" x="96" y="292" width="408" height="36" />
-        <rect className="ss-draw" pathLength="1" x="112" y="158" width="376" height="48" />
-        <rect className="ss-draw" pathLength="1" x="96" y="122" width="408" height="36" />
-      </g>
+      {/* 1. Footings */}
+      <Part dy={-70} delay={0.3}><rect x="128" y="470" width="86" height="20" {...solid} /></Part>
+      <Part dy={-70} delay={0.5}><rect x="386" y="470" width="86" height="20" {...solid} /></Part>
 
-      {/* Hollow-core voids */}
-      <g fill="none" stroke="var(--d)" strokeOpacity="0.5" strokeWidth="1.25" className="ss-fill">
-        {[120, 168, 216, 264, 312, 360, 408, 456].map((cx) => (
-          <g key={cx}>
-            <ellipse cx={cx + 12} cy="140" rx="15" ry="10" />
-            <ellipse cx={cx + 12} cy="310" rx="15" ry="10" />
-          </g>
-        ))}
-      </g>
+      {/* 2. Columns */}
+      <Part dy={-150} delay={1.0}><rect x="152" y="200" width="38" height="270" {...solid} /></Part>
+      <Part dy={-150} delay={1.25}><rect x="410" y="200" width="38" height="270" {...solid} /></Part>
 
-      {/* Corbels */}
-      <g fill="var(--accent)" className="ss-fill">
-        <path d="M190 376h22l-22 24z" />
-        <path d="M410 376h-22l22 24z" />
-      </g>
+      {/* 3. Corbels */}
+      <Part dy={-24} delay={1.85}>
+        <path d="M190 376h22l-22 24z" fill="var(--accent)" />
+        <path d="M410 376h-22l22 24z" fill="var(--accent)" />
+      </Part>
+
+      {/* 4. Lower beam + slab */}
+      <Part dy={-120} delay={2.2}><rect x="112" y="328" width="376" height="48" {...solid} /></Part>
+      <Part dy={-110} delay={2.6}><Slab y={292} cy={310} /></Part>
+
+      {/* 5. Upper beam + slab */}
+      <Part dy={-120} delay={3.1}><rect x="112" y="158" width="376" height="48" {...solid} /></Part>
+      <Part dy={-110} delay={3.5}><Slab y={122} cy={140} /></Part>
 
       {/* Span dimension */}
-      <g stroke="var(--d)" strokeWidth="1" fill="none" className="ss-fill">
-        <path d="M171 520H429M171 510v20M429 510v20" />
-        <path d="M171 520l8-4v8zM429 520l-8-4v8z" fill="var(--d)" />
-      </g>
-      <g className={`${body} ss-fill`} fill="#fff" fontSize="12" fontWeight="500" textAnchor="middle">
-        <text x="300" y="525">6000</text>
+      <g className="ss-fill" style={{ animationDelay: "4.2s" }}>
+        <g stroke="var(--d)" strokeWidth="1" fill="none">
+          <path d="M171 520H429M171 510v20M429 510v20" />
+          <path d="M171 520l8-4v8zM429 520l-8-4v8z" fill="var(--d)" />
+        </g>
+        <text x="300" y="525" className={body} fill="#fff" fontSize="12" fontWeight="500" textAnchor="middle">6000</text>
       </g>
 
       {/* Height dimension */}
-      <g stroke="var(--d)" strokeWidth="1" fill="none" className="ss-fill">
-        <path d="M62 122V300M62 340V490M52 122h20M52 490h20" />
-        <path d="M62 122l-4 8h8zM62 490l-4-8h8z" fill="var(--d)" />
-      </g>
-      <g className={`${body} ss-fill`} fill="#fff" fontSize="12" fontWeight="500">
-        <text x="62" y="325" textAnchor="middle" transform="rotate(-90 62 320)">7200</text>
+      <g className="ss-fill" style={{ animationDelay: "4.4s" }}>
+        <g stroke="var(--d)" strokeWidth="1" fill="none">
+          <path d="M62 122V300M62 340V490M52 122h20M52 490h20" />
+          <path d="M62 122l-4 8h8zM62 490l-4-8h8z" fill="var(--d)" />
+        </g>
+        <text x="62" y="325" className={body} fill="#fff" fontSize="12" fontWeight="500" textAnchor="middle" transform="rotate(-90 62 320)">7200</text>
       </g>
 
       {/* Reinforcement section callout */}
-      <g className="ss-fill">
+      <g className="ss-fill" style={{ animationDelay: "4.7s" }}>
         <line x1="429" y1="400" x2="448" y2="410" stroke="var(--accent)" strokeWidth="1.25" />
         <circle cx="429" cy="400" r="3.5" fill="var(--accent)" />
         <circle cx="498" cy="410" r="52" fill="var(--ink)" stroke="var(--d)" strokeWidth="1.75" />
@@ -145,13 +169,11 @@ function PrecastDrawing() {
         {[[485, 397], [511, 397], [485, 423], [511, 423]].map(([x, y]) => (
           <circle key={`${x}${y}`} cx={x} cy={y} r="3.6" fill="#fff" />
         ))}
-      </g>
-      <g className={`${body} ss-fill`} fill="#fff" fillOpacity="0.8" fontSize="11" fontWeight="500" textAnchor="middle">
-        <text x="498" y="482">4-T20 + T10 @ 150</text>
+        <text x="498" y="482" className={body} fill="#fff" fillOpacity="0.8" fontSize="11" fontWeight="500" textAnchor="middle">4-T20 + T10 @ 150</text>
       </g>
 
       {/* Title block */}
-      <g className="ss-fill">
+      <g className="ss-fill" style={{ animationDelay: "0.2s" }}>
         <rect x="396" y="40" width="168" height="52" fill="rgba(255,255,255,0.05)" stroke="var(--d)" strokeOpacity="0.6" />
         <line x1="396" y1="62" x2="564" y2="62" stroke="var(--d)" strokeOpacity="0.6" />
         <rect x="396" y="40" width="5" height="52" fill="var(--accent)" />
@@ -280,19 +302,23 @@ export default function Home() {
 
         @keyframes ss-rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
         @keyframes ss-reveal { from { opacity: 0; transform: translateY(20px) scale(.98); } to { opacity: 1; transform: none; } }
-        @keyframes ss-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
         @keyframes ss-fade { from { opacity: 0; } to { opacity: 1; } }
         @keyframes ss-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        @keyframes ss-asm {
+          0%   { opacity: 0; transform: translate(var(--dx), var(--dy)); }
+          55%  { opacity: 1; }
+          80%  { transform: translate(0, 5px); }   /* small "settle" onto its bearing */
+          100% { opacity: 1; transform: none; }
+        }
 
         .ss-rise   { animation: ss-rise .9s cubic-bezier(.2,.7,.2,1) both; }
         .ss-reveal { animation: ss-reveal 1.1s cubic-bezier(.2,.7,.2,1) .2s both; }
-        .ss-draw   { stroke-dasharray: 1; stroke-dashoffset: 1; animation: ss-draw 1.6s ease-out .5s forwards; }
-        .ss-fill   { animation: ss-fade .8s ease-out 1.4s both; }
+        .ss-asm    { animation: ss-asm .9s cubic-bezier(.3,.7,.3,1) both; }
+        .ss-fill   { animation: ss-fade .8s ease-out both; }   /* delays are set inline */
         .ss-float  { animation: ss-float 8s ease-in-out infinite; }
 
         @media (prefers-reduced-motion: reduce) {
-          .ss-rise, .ss-reveal, .ss-fill, .ss-float { animation: none; }
-          .ss-draw { animation: none; stroke-dashoffset: 0; }
+          .ss-rise, .ss-reveal, .ss-fill, .ss-float, .ss-asm { animation: none; }
         }
       `}</style>
 

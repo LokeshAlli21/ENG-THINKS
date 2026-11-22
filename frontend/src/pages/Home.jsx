@@ -5,6 +5,7 @@ import Section3 from "../components/Section3";
 import Section4 from "../components/Section4";
 import Section5 from "../components/Section5";
 import Section6 from "../components/Section6";
+import Section7 from "../components/Section7";
 /* -------------------------------------------------------------------------
    ENG THINKS — Home page (Hero section)
    The Navbar is rendered once in main.jsx (outside <App />), so it is not
@@ -302,6 +303,7 @@ export default function Home() {
         <Section4 />
         <Section5 />
         <Section6 />
+        <Section7 />
       </main>
     </>
   );
